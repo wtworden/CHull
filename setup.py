@@ -1,29 +1,39 @@
 
+from __future__ import print_function
+
+import os
+
+import setuptools
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+this_directory = os.path.dirname(__file__)
+source_directory = os.path.join(this_directory, 'chull')
+exec(open(os.path.join(source_directory, 'version.py')).read())  # Load in the variable __version__.
+
+dependencies = ['cypari']
+
+setuptools.setup(
+    name='chull',  
+    version=__version__,
+    author="William Worden",
+    author_email="wtworden@gmail.com",
+    description="",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/wtworden/CHull",
+    packages=['chull'],
+    package_data={
+        },
+    install_requires=dependencies,
+    classifiers=[
+         "Programming Language :: Python :: 3",
+         "License :: OSI Approved :: MIT License",
+         "Operating System :: OS Independent",
+    ],
+ )
 
 
-from distutils.core import setup
-from distutils.extension import Extension
-from Cython.Build import cythonize
-import sys
-
-#gmpgcd = Extension("gmpgcd", include_dirs=['/opt/local/include','usr/local/include'], libraries=['gmp'], sources=['gmpgcdmodule.c'])
-
-static_libraries = ['gmp']
-static_lib_dir = '/usr/local/lib'
-
-if sys.platform == 'win32':
-    libraries.extend(static_libraries)
-    library_dirs.append(static_lib_dir)
-    extra_objects = []
-else: # POSIX
-    extra_objects = ['{}/lib{}.a'.format(static_lib_dir, l) for l in static_libraries]
-
-gmpgcd = Extension("gmpgcd",include_dirs=['usr/local/include'],extra_objects=extra_objects,sources=['gmpgcdmodule.c'],extra_link_args=['--disable-assembly'])
-                
-
-setup(
-    name="gmpgcd",
-    version='1.0',
-    description='GMP computation of gcd',
-    ext_modules=[gmpgcd]
-)
+## sage -python setup.py sdist bdist_wheel --universal
+## twine upload dist/*

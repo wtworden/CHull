@@ -1,11 +1,19 @@
 try:
-    from math import gcd
     from collections.abc import Sequence
 except ImportError:
-    from fractions import gcd
     from collections import Sequence
 
 from functools import reduce
+import sys
+
+if sys.platform == 'linux':
+    from sympy import QQ as mpq
+    from math import gcd
+    def lcm(a, b):
+        return a * b // gcd(a, b)
+
+elif sys.platform == 'darwin':
+    from gmpy2 import mpq, gcd, lcm
 
 
 
@@ -97,15 +105,16 @@ class Matrix(Sequence):
         return determinant(self)
 
     def mult(self,other):
-        if isinstance(other,Rational) or isinstance(other,int):
-            return Matrix([[self._rows[i][j]*other for j in range(self._num_cols)] for i in range(self._num_rows)])
-        else:
+        if isinstance(other,Matrix) or isinstance(other,Vector):
             return mult(self,other)
+        else:
+            return Matrix([[self._rows[i][j]*other for j in range(self._num_cols)] for i in range(self._num_rows)])
 
 
 class Vector(Sequence):
     def __init__(self,coords):
-        self._coords = tuple([Rational((c.numerator,c.denominator)) for c in coords])
+#        self._coords = tuple([mpq(c.numerator,c.denominator) for c in coords])
+        self._coords=tuple(coords)
         self.dim = len(self._coords)
         #super().__init__()
 
@@ -147,6 +156,15 @@ class Vector(Sequence):
     def __ne__(self,other):
         return ( self.__class__ != other.__class__ ) or ( self._coords != other._coords )
 
+    def __le__(self,other):
+        return self._coords <= other._coords
+    def __lt__(self,other):
+        return self._coords < other._coords
+    def __ge__(self,other):
+        return self._coords >= other._coords
+    def __gt__(self,other):
+        return self._coords > other._coords
+
     def as_tuple(self):
         return self._coords
 
@@ -166,98 +184,6 @@ class Vector(Sequence):
 
     def ns(self):
         return self.dot_product(self)
-
-def QQ(rat):
-    return Rational(rat)
-
-class Rational():
-    def __init__(self,rat): # rat is an integer or a tuple/list of integers.
-        try:
-            assert rat[1] != 0
-            p = rat[0]; q = rat[1]
-        except TypeError:
-            p = rat; q=1
-        #self.numerator = p*(-2*int(q<0)+1)
-        self.numerator = (p//gcd(p,q))*(-2*int(q<0)+1)
-        #self.denominator = q*(-2*int(q<0)+1)
-        self.denominator = (q//gcd(p,q))*(-2*int(q<0)+1)
-        self.numer = self.numerator
-        self.denom = self.denominator
-        self._tuple = (self.numer,self.denom)
-
-    def __add__(self,other):
-        return Rational((self.numerator*other.denominator+other.numerator*self.denominator,self.denominator*other.denominator))
-    
-    def __radd__(self,other):
-        return self.__add__(other)
-
-    def __sub__(self,other):
-        return Rational((self.numerator*other.denominator-other.numerator*self.denominator,self.denominator*other.denominator))
-
-    def __rsub__(self,other):
-        return self.__neg__().__add__(other)
-
-    def __neg__(self):
-        return Rational((-self.numerator,self.denominator))
-
-    def __abs__(self):
-        return Rational((abs(self.numerator),self.denominator))
-
-    def __lt__(self,other):
-        return self.__sub__(other).numer < 0
-
-    def __le__(self,other):
-        return self.__sub__(other).numer <= 0
-    
-    def __ge__(self,other):
-        return self.__sub__(other).numer >= 0
-    
-    def __gt__(self,other):
-        return self.__sub__(other).numer > 0
-
-    def __mul__(self,other):
-        try:
-            return Rational((self.numerator*other.numerator,self.denominator*other.denominator))
-        except AttributeError:
-            return other*self
-
-    def __rmul__(self,other):
-        return self.__mul__(other)
-
-    def __pow__(self,integer):
-        if integer < 0:
-            return self.inverse().__pow__(-integer)
-        else:
-            r = Rational((self.numerator,self.denominator))
-            for i in range(integer-1):
-                r = r.__mul__(self)
-            return r
-
-    def __truediv__(self,other):
-        return self.__mul__(Rational((other.denominator,other.numerator)))
-
-    def __rtruediv__(self,other):
-        return self.inverse().__mul__(other)
-
-    def __repr__(self):
-        if self.denominator != 1:
-            return '{}/{}'.format(self.numerator,self.denominator)
-        else:
-            return '{}'.format(self.numerator)
-
-    def __hash__(self):
-        return hash(self._tuple)
-
-    def __eq__(self,other):
-        return ( self.__class__ == other.__class__ ) and ( self._tuple == other._tuple )
-
-    def __ne__(self,other):
-        return ( self.__class__ != other.__class__ ) or ( self._tuple != other._tuple )
-
-    def inverse(self):
-        return Rational((self.denominator,self.numerator))
-
-
 
 
 
@@ -284,10 +210,6 @@ def mult(A,B): #returns A*B, where A and B are vectors/matrices
     else:
         return C[0][0]
 
-def projection(subspace_basis):
-    A = Matrix([v for v in subspace_basis]).transpose()
-    proj = A*((A.transpose()*A)**(-1))*A.transpose()
-    return proj
 
 def transpose(A):
     return [[A[i][j] for i in range(len(A))] for j in range(len(A[0]))]
@@ -315,8 +237,8 @@ def minor(A,i,j):
     return B
 
 
-def lcm(a, b):
-    return a * b // gcd(a, b)
+#def lcm(a, b):
+#    return a * b // gcd(a, b)
 
 def LCM(numbers):
      return reduce(lcm, numbers)
@@ -331,7 +253,7 @@ def inverse(A,dim):
 #        A_int = [[(A[i][j]*l).numerator//(A[i][j]).denominator for j in range(dim)] for i in range(dim)]
         A_int_adjugate = adjugate(A_int)
         d = determinant(A_int)
-        inverse = [[Rational((l,d))*A_int_adjugate[i][j] for j in range(dim)] for i in range(dim)]
+        inverse = [[mpq(l,d)*A_int_adjugate[i][j] for j in range(dim)] for i in range(dim)]
         return inverse
     else:
         return Matrix([[A[0][0]**(-1)]])
@@ -342,9 +264,21 @@ def dot(v,w):
         dot += v.transpose()[i]*w.transpose()[i]
     return dot
 
+def gram_schmidt(vectors):
+    orthobasis = []
+    orthobasis.append(vectors[0])
+    for i in range(1,len(vectors)):
+        orthobasis.append(vectors[i])
+        for j in range(0,i):
+            orthobasis[i] -= ((vectors[i]*orthobasis[j])/(orthobasis[j]*orthobasis[j]))*orthobasis[j]
+    return orthobasis
 
 
-
+def projection(v,orthobasis):
+    proj = Vector([0 for _ in range(len(v))])
+    for u in orthobasis:
+        proj += ((v*u)/(u*u))*u
+    return proj
 
 
 

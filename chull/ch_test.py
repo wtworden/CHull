@@ -1,10 +1,14 @@
 
-import rat_matrices as rat
+import chull.rat_matrices as rat
 from random import randint
-import convex_hull as ch
+import chull.convex_hull as ch
 from timeit import timeit
+import sys
 #from sage.all import Polyhedron
-from gmpy2 import mpq
+if sys.platform == 'linux':
+    from sympy import QQ as mpq
+elif sys.platform == 'darwin':
+    from gmpy2 import mpq
 
 
 def in_sage():
@@ -13,6 +17,10 @@ def in_sage():
         return True
     except ModuleNotFoundError:
         return False
+
+def tuples_to_vecs(sage_tuples):
+    vectors = [rat.Vector([mpq(c.numer(),c.denom()) for c in p]) for p in sage_tuples]
+    return vectors
 
 
 def get_test_points(dim,sage=False):
@@ -54,20 +62,29 @@ def get_rand_points(num_points, width, dim):
         all_rat_points.append(-p)
     return all_sage_points, all_rat_points
 
-def check_hulls(num_points, width, dim):
-    sage_points, rat_points = get_rand_points(num_points, width, dim)
-    sage_hull = Polyhedron(sage_points)
-    sage_verts = sorted([tuple(v.vector()) for v in sage_hull.vertices()])
+def check_hulls(num_points, width, dim, rand=True):
+    if not rand:
+        sage_points, rat_points = get_test_points(4,True),get_test_points(4,False)
+    else:
+        sage_points, rat_points = get_rand_points(num_points, width, dim)
+    sage_hull = Polytope(sage_points)
     rat_hull = ch.quick_hull(rat_points, dim)
+    
+    sage_verts = sorted([tuple(v.vector()) for v in sage_hull.vertices()])
+    rat_verts = [v.coords().as_tuple() for v in rat_hull.facets(0)]
+    rat_verts = sorted([tuple([QQ((v[i].numerator,v[i].denominator)) for i in range(dim)]) for v in rat_verts])
+    if sage_verts != rat_verts:
+        return False, sage_hull,rat_hull
+
     for d in range(1,rat_hull.dim):
-        sage_verts = sorted([tuple(v.vector()) for f in sage_hull.faces(d) for v in f.vertices()])
-        rat_verts = [v.coords().as_tuple() for f in rat_hull.facets(d) for v in f.vertices()]
-        rat_verts = sorted([tuple([QQ((v[i].numerator,v[i].denominator)) for i in range(dim)]) for v in rat_verts])
-        if sage_verts != rat_verts:
-            return False
+        sage_facets = sorted([sorted([tuple(v.vector()) for v in f.vertices()]) for f in sage_hull.faces(d)])
+        rat_facets = [[v.coords().as_tuple() for v in f.vertices()] for f in rat_hull.facets(d)]
+        rat_facets = sorted([sorted([tuple([QQ((v[i].numerator,v[i].denominator)) for i in range(dim)]) for v in rat_facets[i]]) for i in range(len(rat_facets))])
+        if sage_facets != rat_facets:
+            return False, sage_hull,rat_hull
         else:
             continue
-    return True
+    return True, sage_hull,rat_hull
 
 def get_bad_points():
     points=[rat.Vector([mpq(-10,11), mpq(22,13), mpq(-27,10), mpq(-3,14)]),rat.Vector([mpq(10,11), mpq(-22,13), mpq(27,10), mpq(3,14)]),rat.Vector([mpq(5,11), mpq(0,1), mpq(-1,18), mpq(24,17)]),rat.Vector([mpq(-5,11), mpq(0,1), mpq(1,18), mpq(-24,17)]),rat.Vector([mpq(2,15), mpq(-7,26), mpq(11,5), mpq(3,1)]),rat.Vector([mpq(-2,15), mpq(7,26), mpq(-11,5), mpq(-3,1)]),rat.Vector([mpq(12,25), mpq(17,6), mpq(5,3), mpq(-1,3)]),rat.Vector([mpq(-12,25), mpq(-17,6), mpq(-5,3), mpq(1,3)]),rat.Vector([mpq(19,23), mpq(-3,19), mpq(-1,19), mpq(-13,7)]),rat.Vector([mpq(-19,23), mpq(3,19), mpq(1,19), mpq(13,7)]),rat.Vector([mpq(0,1), mpq(-3,13), mpq(6,5), mpq(3,2)]),rat.Vector([mpq(0,1), mpq(3,13), mpq(-6,5), mpq(-3,2)]),rat.Vector([mpq(0,1), mpq(15,11), mpq(1,7), mpq(27,5)]),rat.Vector([mpq(0,1), mpq(-15,11), mpq(-1,7), mpq(-27,5)]),rat.Vector([mpq(-15,16), mpq(5,3), mpq(5,26), mpq(-29,30)]),rat.Vector([mpq(15,16), mpq(-5,3), mpq(-5,26), mpq(29,30)]),rat.Vector([mpq(23,28), mpq(3,29), mpq(2,3), mpq(-2,5)]),rat.Vector([mpq(-23,28), mpq(-3,29), mpq(-2,3), mpq(2,5)]),rat.Vector([mpq(3,20), mpq(25,7), mpq(1,15), mpq(3,1)]),rat.Vector([mpq(-3,20), mpq(-25,7), mpq(-1,15), mpq(-3,1)]),rat.Vector([mpq(-22,29), mpq(-5,2), mpq(11,25), mpq(-5,1)]),rat.Vector([mpq(22,29), mpq(5,2), mpq(-11,25), mpq(5,1)]),rat.Vector([mpq(-23,1), mpq(1,1), mpq(8,1), mpq(8,7)]),rat.Vector([mpq(23,1), mpq(-1,1), mpq(-8,1), mpq(-8,7)]),rat.Vector([mpq(12,19), mpq(-11,24), mpq(19,11), mpq(-7,5)]),rat.Vector([mpq(-12,19), mpq(11,24), mpq(-19,11), mpq(7,5)]),rat.Vector([mpq(14,1), mpq(13,20), mpq(3,5), mpq(-25,9)]),rat.Vector([mpq(-14,1), mpq(-13,20), mpq(-3,5), mpq(25,9)]),rat.Vector([mpq(-7,6), mpq(4,1), mpq(-25,22), mpq(5,3)]),rat.Vector([mpq(7,6), mpq(-4,1), mpq(25,22), mpq(-5,3)]),rat.Vector([mpq(2,1), mpq(13,5), mpq(18,17), mpq(-12,25)]),rat.Vector([mpq(-2,1), mpq(-13,5), mpq(-18,17), mpq(12,25)]),rat.Vector([mpq(-6,1), mpq(-3,1), mpq(-3,2), mpq(-3,1)]),rat.Vector([mpq(6,1), mpq(3,1), mpq(3,2), mpq(3,1)]),rat.Vector([mpq(-25,4), mpq(6,19), mpq(24,29), mpq(-13,6)]),rat.Vector([mpq(25,4), mpq(-6,19), mpq(-24,29), mpq(13,6)]),rat.Vector([mpq(2,29), mpq(19,29), mpq(5,9), mpq(23,27)]),rat.Vector([mpq(-2,29), mpq(-19,29), mpq(-5,9), mpq(-23,27)]),rat.Vector([mpq(23,29), mpq(0,1), mpq(-27,14), mpq(1,1)]),rat.Vector([mpq(-23,29), mpq(0,1), mpq(27,14), mpq(-1,1)]),rat.Vector([mpq(-15,8), mpq(1,5), mpq(4,3), mpq(1,3)]),rat.Vector([mpq(15,8), mpq(-1,5), mpq(-4,3), mpq(-1,3)]),rat.Vector([mpq(-1,4), mpq(21,26), mpq(11,5), mpq(11,2)]),rat.Vector([mpq(1,4), mpq(-21,26), mpq(-11,5), mpq(-11,2)]),rat.Vector([mpq(28,11), mpq(6,5), mpq(9,5), mpq(-28,25)]),rat.Vector([mpq(-28,11), mpq(-6,5), mpq(-9,5), mpq(28,25)]),rat.Vector([mpq(11,10), mpq(-5,4), mpq(15,29), mpq(9,14)]),rat.Vector([mpq(-11,10), mpq(5,4), mpq(-15,29), mpq(-9,14)]),rat.Vector([mpq(-2,13), mpq(-15,16), mpq(-11,10), mpq(3,4)]),rat.Vector([mpq(2,13), mpq(15,16), mpq(11,10), mpq(-3,4)]),rat.Vector([mpq(-29,10), mpq(-3,10), mpq(17,4), mpq(-21,4)]),rat.Vector([mpq(29,10), mpq(3,10), mpq(-17,4), mpq(21,4)]),rat.Vector([mpq(-13,1), mpq(1,12), mpq(29,30), mpq(-15,14)]),rat.Vector([mpq(13,1), mpq(-1,12), mpq(-29,30), mpq(15,14)]),rat.Vector([mpq(3,5), mpq(-5,26), mpq(-9,5), mpq(-11,8)]),rat.Vector([mpq(-3,5), mpq(5,26), mpq(9,5), mpq(11,8)]),rat.Vector([mpq(7,15), mpq(16,11), mpq(-18,17), mpq(8,15)]),rat.Vector([mpq(-7,15), mpq(-16,11), mpq(18,17), mpq(-8,15)]),rat.Vector([mpq(7,8), mpq(25,6), mpq(-3,4), mpq(17,26)]),rat.Vector([mpq(-7,8), mpq(-25,6), mpq(3,4), mpq(-17,26)])]

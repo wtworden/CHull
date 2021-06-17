@@ -4,8 +4,18 @@ except ImportError:
     from collections import Sequence
 
 from functools import reduce
+import sys
 
-from gmpy2 import mpq, gcd, lcm
+if sys.platform == 'linux':
+    from sympy import QQ as mpq
+    from math import gcd
+    def lcm(a, b):
+        return a * b // gcd(a, b)
+
+elif sys.platform == 'darwin':
+    from gmpy2 import mpq, gcd, lcm
+
+
 
 class Matrix(Sequence):
     def __init__(self,rows):
@@ -146,6 +156,15 @@ class Vector(Sequence):
     def __ne__(self,other):
         return ( self.__class__ != other.__class__ ) or ( self._coords != other._coords )
 
+    def __le__(self,other):
+        return self._coords <= other._coords
+    def __lt__(self,other):
+        return self._coords < other._coords
+    def __ge__(self,other):
+        return self._coords >= other._coords
+    def __gt__(self,other):
+        return self._coords > other._coords
+
     def as_tuple(self):
         return self._coords
 
@@ -191,10 +210,6 @@ def mult(A,B): #returns A*B, where A and B are vectors/matrices
     else:
         return C[0][0]
 
-def old_projection(subspace_basis):
-    A = Matrix([v for v in subspace_basis]).transpose()
-    proj = A*((A.transpose()*A)**(-1))*A.transpose()
-    return proj
 
 def transpose(A):
     return [[A[i][j] for i in range(len(A))] for j in range(len(A[0]))]

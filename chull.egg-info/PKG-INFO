@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: chull
+Version: 0.1.0
+Summary: UNKNOWN
+Home-page: https://github.com/wtworden/CHull
+Author: William Worden
+Author-email: wtworden@gmail.com
+License: UNKNOWN
+Description: # CHull
+        
+        A program to compute the convex hull of a collection of rational points in R^n, using cypari.
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
